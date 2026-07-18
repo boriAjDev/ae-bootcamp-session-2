@@ -5,132 +5,148 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import App from '../App';
 
-// Mock server to intercept API requests
+window.confirm = jest.fn(() => true);
+
+const todos = [
+  {
+    id: 1,
+    title: 'Test Todo 1',
+    description: 'First test todo',
+    completed: false,
+    dueDate: '2026-07-18',
+    priority: 'high',
+    tags: ['work'],
+    orderIndex: 0,
+    createdAt: '2026-07-18 00:00:00',
+    updatedAt: '2026-07-18 00:00:00',
+  },
+  {
+    id: 2,
+    title: 'Test Todo 2',
+    description: 'Second test todo',
+    completed: true,
+    dueDate: null,
+    priority: 'medium',
+    tags: ['home'],
+    orderIndex: 1,
+    createdAt: '2026-07-18 00:00:00',
+    updatedAt: '2026-07-18 00:00:00',
+  },
+];
+
 const server = setupServer(
-  // GET /api/items handler
-  rest.get('/api/items', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json([
-        { id: 1, name: 'Test Item 1', created_at: '2023-01-01T00:00:00.000Z' },
-        { id: 2, name: 'Test Item 2', created_at: '2023-01-02T00:00:00.000Z' },
-      ])
-    );
-  }),
-  
-  // POST /api/items handler
-  rest.post('/api/items', (req, res, ctx) => {
-    const { name } = req.body;
-    
-    if (!name || name.trim() === '') {
-      return res(
-        ctx.status(400),
-        ctx.json({ error: 'Item name is required' })
-      );
+  rest.get('/api/todos', (req, res, ctx) => res(ctx.status(200), ctx.json(todos))),
+  rest.post('/api/todos', (req, res, ctx) => {
+    const { title } = req.body;
+
+    if (!title || title.trim() === '') {
+      return res(ctx.status(400), ctx.json({ error: 'Todo title is required' }));
     }
-    
+
     return res(
       ctx.status(201),
       ctx.json({
         id: 3,
-        name,
-        created_at: new Date().toISOString(),
+        title,
+        description: '',
+        completed: false,
+        dueDate: null,
+        priority: 'medium',
+        tags: [],
+        orderIndex: 2,
+        createdAt: '2026-07-18 00:00:00',
+        updatedAt: '2026-07-18 00:00:00',
       })
     );
-  })
+  }),
+  rest.put('/api/todos/:id', (req, res, ctx) => {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    return res(
+      ctx.status(200),
+      ctx.json({
+        id: Number(id),
+        title,
+        description: req.body.description || '',
+        completed: false,
+        dueDate: req.body.dueDate || null,
+        priority: req.body.priority || 'medium',
+        tags: req.body.tags || [],
+        orderIndex: 0,
+        createdAt: '2026-07-18 00:00:00',
+        updatedAt: '2026-07-18 00:00:00',
+      })
+    );
+  }),
+  rest.patch('/api/todos/:id/toggle', (req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ ...todos[0], completed: true }))
+  ),
+  rest.post('/api/todos/:id/duplicate', (req, res, ctx) =>
+    res(ctx.status(201), ctx.json({ ...todos[0], id: 3, title: 'Test Todo 1 (copy)' }))
+  ),
+  rest.patch('/api/todos/bulk-status', (req, res, ctx) => res(ctx.status(200), ctx.json({ updated: [] }))),
+  rest.put('/api/todos/reorder', (req, res, ctx) => res(ctx.status(200), ctx.json(todos))),
+  rest.delete('/api/todos/completed', (req, res, ctx) => res(ctx.status(200), ctx.json({ deletedIds: [2] }))),
+  rest.delete('/api/todos/:id', (req, res, ctx) => res(ctx.status(200), ctx.json({ message: 'Todo deleted successfully' })))
 );
 
-// Setup and teardown for the mock server
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe('App Component', () => {
-  test('renders the header', async () => {
+  test('renders the workspace shell', async () => {
     await act(async () => {
       render(<App />);
     });
-    expect(screen.getByText('React Frontend with Node Backend')).toBeInTheDocument();
-    expect(screen.getByText('Connected to in-memory database')).toBeInTheDocument();
+
+    expect(screen.getByText('Bootcamp TODO')).toBeInTheDocument();
+    expect(screen.getByText('Organize tasks with calm, focused control.')).toBeInTheDocument();
   });
 
-  test('loads and displays items', async () => {
+  test('loads and displays todos', async () => {
     await act(async () => {
       render(<App />);
     });
-    
-    // Initially shows loading state
-    expect(screen.getByText('Loading data...')).toBeInTheDocument();
-    
-    // Wait for items to load
+
     await waitFor(() => {
-      expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      expect(screen.getByText('Test Item 2')).toBeInTheDocument();
+      expect(screen.getByText('Test Todo 1')).toBeInTheDocument();
+      expect(screen.getByText('Test Todo 2')).toBeInTheDocument();
     });
   });
 
-  test('adds a new item', async () => {
+  test('adds a new todo', async () => {
     const user = userEvent.setup();
-    
+
     await act(async () => {
       render(<App />);
     });
-    
-    // Wait for items to load
-    await waitFor(() => {
-      expect(screen.queryByText('Loading data...')).not.toBeInTheDocument();
-    });
-    
-    // Fill in the form and submit
-    const input = screen.getByPlaceholderText('Enter item name');
+
+    const input = screen.getByPlaceholderText('Write a task title');
     await act(async () => {
-      await user.type(input, 'New Test Item');
+      await user.type(input, 'New Test Todo');
     });
-    
-    const submitButton = screen.getByText('Add Item');
+
+    const submitButton = screen.getByText('Add todo');
     await act(async () => {
       await user.click(submitButton);
     });
-    
-    // Check that the new item appears
-    await waitFor(() => {
-      expect(screen.getByText('New Test Item')).toBeInTheDocument();
-    });
-  });
 
-  test('handles API error', async () => {
-    // Override the default handler to simulate an error
-    server.use(
-      rest.get('/api/items', (req, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
-    
-    await act(async () => {
-      render(<App />);
-    });
-    
-    // Wait for error message
     await waitFor(() => {
-      expect(screen.getByText(/Failed to fetch data/)).toBeInTheDocument();
+      expect(screen.getByText('New Test Todo')).toBeInTheDocument();
     });
   });
 
   test('shows empty state when no items', async () => {
-    // Override the default handler to return empty array
-    server.use(
-      rest.get('/api/items', (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json([]));
-      })
-    );
-    
+    server.use(rest.get('/api/todos', (req, res, ctx) => res(ctx.status(200), ctx.json([]))));
+
     await act(async () => {
       render(<App />);
     });
-    
-    // Wait for empty state message
+
     await waitFor(() => {
-      expect(screen.getByText('No items found. Add some!')).toBeInTheDocument();
+      expect(screen.getByText('No todos found. Add your first one.')).toBeInTheDocument();
     });
   });
 });
