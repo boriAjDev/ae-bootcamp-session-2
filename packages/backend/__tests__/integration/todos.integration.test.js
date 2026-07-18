@@ -8,7 +8,7 @@ const tempDbPath = path.join(tempDir, 'todos.db');
 
 process.env.TODO_DB_PATH = tempDbPath;
 
-const { app, db } = require('../src/app');
+const { app, db } = require('../../src/app');
 
 afterAll(() => {
   if (db) {
