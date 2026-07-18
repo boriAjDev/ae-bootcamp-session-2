@@ -85,11 +85,11 @@ jobs:
 
       - name: Build message - step results
         id: build-message-step-results
-        uses: skills/action-text-variables@v4
+        uses: skills/action-text-variables@v2
         with:
           template-file: exercise-toolkit/markdown-templates/step-feedback/step-results-table.md
           template-vars: |
-            step_number: "2-5"
+            step_number: 2-5
             passed: ${{ steps.check_unit_tests.outcome == 'success' && steps.check_integration_tests.outcome == 'success' && steps.check_playwright.outcome == 'success' && steps.check_e2e_tests.outcome == 'success' }}
             results_table:
               - description: "Unit tests should be present (app.test.js in backend and App.test.js in frontend)."
