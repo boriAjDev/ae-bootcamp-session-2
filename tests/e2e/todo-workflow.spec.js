@@ -33,17 +33,29 @@ test.describe('Todo workflow', () => {
     const todoPage = new TodoPage(page);
     await todoPage.goto();
 
+    const suffix = Date.now();
+    const bootcampTodo = `Finish bootcamp TODO UI ${suffix}`;
+    const bulkTodoOne = `Plan weekly tasks ${suffix}`;
+    const bulkTodoTwo = `Add due date support ${suffix}`;
+
+    await todoPage.addTodo({ title: bootcampTodo });
+    await expect(todoPage.todoCard(bootcampTodo)).toBeVisible();
+    await todoPage.addTodo({ title: bulkTodoOne });
+    await expect(todoPage.todoCard(bulkTodoOne)).toBeVisible();
+    await todoPage.addTodo({ title: bulkTodoTwo });
+    await expect(todoPage.todoCard(bulkTodoTwo)).toBeVisible();
+
     await page.getByPlaceholder('Search title or description').fill('bootcamp');
-    await expect(page.getByRole('heading', { name: 'Finish bootcamp TODO UI' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: bootcampTodo })).toBeVisible();
 
     await page.getByPlaceholder('Search title or description').fill('');
-    await todoPage.todoCard('Plan weekly tasks').getByRole('checkbox').check();
-    await todoPage.todoCard('Add due date support').getByRole('checkbox').check();
+    await todoPage.todoCard(bulkTodoOne).getByRole('checkbox').check();
+    await todoPage.todoCard(bulkTodoTwo).getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Mark complete' }).click();
 
     await expect(page.getByText('0 selected')).toBeVisible();
     await page.getByRole('button', { name: 'Clear completed' }).click();
-    await expect(todoPage.todoCard('Plan weekly tasks')).toHaveCount(0);
-    await expect(todoPage.todoCard('Add due date support')).toHaveCount(0);
+    await expect(todoPage.todoCard(bulkTodoOne)).toHaveCount(0);
+    await expect(todoPage.todoCard(bulkTodoTwo)).toHaveCount(0);
   });
 });

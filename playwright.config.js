@@ -9,12 +9,13 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run start',
+    command: 'rm -f /tmp/ae-bootcamp-e2e-todos.db && npm run start',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
     env: {
       REACT_APP_API_BASE_URL: 'http://127.0.0.1:3030',
+      TODO_DB_PATH: '/tmp/ae-bootcamp-e2e-todos.db',
     },
   },
   projects: [
